@@ -20,7 +20,8 @@ def write_results():
 
 
 letters = [x for x in string.ascii_uppercase]
-alphabet_index = {k: v for (k, v) in zip(letters, range(26))}   # assigns number to each letter starting from zero
+alphabet_index = {k: v for (k, v) in zip(letters, range(26))}   # assigns a number to each letter starting from zero
+index_alphabet = {k: v for (k, v) in zip(range(26), letters)}   # assigns a letter to each number starting from A
 
 
 categories_seats = {}   # all seats with category names
@@ -57,52 +58,34 @@ def create_category(arg):
 
 
 customer_list = []
+total_cost = 0
 
 
 def sell_ticket(arg):
 
-    def sold_ticket_organizer(total, st):
+    def sold_ticket_organizer(column):
         if payment == 'full':
             categories_seats[category][row_number][column] = 'F'
-            total += 20
         elif payment == 'student':
             categories_seats[category][row_number][column] = 'S'
-            total += 10
         elif payment == 'season':
             categories_seats[category][row_number][column] = 'T'
-            total += 250
 
-        # I will utilize from this expression while showing category table and cancelling tickets
-
-        sold_ticket_category[name] = (category, st, payment)
-
-    def interval_tickets(total):
+    def interval_tickets():
         for seat_col in range(bottom, top + 1):
-            if categories_seats[category][row_number1][seat_col] != 'X':
+            if categories_seats[category][row_number][seat_col] != 'X':
                 results.append(f"Error: The seats {seat} cannot be sold to {name} due some of them have already been sold!")
                 return None
         for seat_col in range(bottom, top + 1):
-            if payment == 'full':
-                categories_seats[category][row_number1][seat_col] = 'F'
-                total += 20
-            elif payment == 'student':
-                categories_seats[category][row_number1][seat_col] = 'S'
-                total += 10
-            elif payment == 'season':
-                categories_seats[category][row_number1][seat_col] = 'T'
-                total += 250
+            sold_ticket_organizer(seat_col)
 
-            ticket_seats.append(row1 + str(seat_col))
-
-        sold_ticket_category[name] = (category, ticket_seats, payment)
         results.append(f"Success: {name} has bought {seat} at {category}")
-        # I used the same loops since first one checks if any of given seat are sold
+        # I used the same loop twice since first one checks if any of given seat are sold
         # and the second one sells the seats if the first loop are passed successfully
 
     arguments = arg.split()
     name, payment, category = arguments[0], arguments[1], arguments[2]
     wanted_seats = arguments[3:]
-    total_cost = 0
 
     if name not in customer_list:
         if category in categories_seats:
@@ -115,11 +98,9 @@ def sell_ticket(arg):
                     row, column = seat[0], int(seat[1:])
                     row_number = alphabet_index[row]
 
-                    ticket_seats = []
                     if row_number <= max_row and column <= max_column:
                         if categories_seats[category][row_number][column] == 'X':
-                            ticket_seats.append(seat)
-                            sold_ticket_organizer(total_cost, ticket_seats)
+                            sold_ticket_organizer(column)
 
                             results.append(f"Success: {name} has bought {seat} at {category}")
                         else:
@@ -131,18 +112,17 @@ def sell_ticket(arg):
                     elif row_number > max_row and column > max_column:
                         results.append(f"Warning: The category '{category}' has less row and column than the specified index {seat}!")
                 else:
-                    row1, column_interval = seat[0], seat[1:].split('-')
-                    row_number1 = alphabet_index[row1]
+                    row, column_interval = seat[0], seat[1:].split('-')
+                    row_number = alphabet_index[row]
                     bottom, top = int(column_interval[0]), int(column_interval[1])
 
-                    if row_number1 <= max_row and top <= max_column:
-                        ticket_seats = []
-                        interval_tickets(total_cost)
-                    elif row_number1 <= max_row and top > max_column:
+                    if row_number <= max_row and top <= max_column:
+                        interval_tickets()
+                    elif row_number <= max_row and top > max_column:
                         results.append(f"Error: The category '{category}' has less column than the specified index {seat}!")
-                    elif row_number1 > max_row and top <= max_column:
+                    elif row_number > max_row and top <= max_column:
                         results.append(f"Error: The category '{category}' has less row than the specified index {seat}!")
-                    elif row_number1 > max_row and top > max_column:
+                    elif row_number > max_row and top > max_column:
                         results.append(f"Error: The category '{category}' has less row and column than the specified index {seat}!")
         else:
             results.append(f"Warning: Category {category} is not available!")
@@ -153,6 +133,7 @@ def sell_ticket(arg):
 
 
 def cancel_ticket(arg):
+
     arguments = arg.split()
     category = arguments[0]
     cancel_seats = arguments[1:]
@@ -166,44 +147,97 @@ def cancel_ticket(arg):
             row, column = seat[0], int(seat[1:])
             row_number = alphabet_index[row]
             if row_number <= max_row and column <= max_column:
-                for ticket in sold_ticket_category:
-                    if sold_ticket_category[ticket][0] == category and seat in sold_ticket_category[ticket][1]:
-                        target = categories_seats[category][row_number][column]
-                        if target == 'S':
-                            sold_ticket_category[ticket][2] -= 10
-                            sold_ticket_category[ticket][1].remove(seat)
-                        elif target == 'F':
-                            sold_ticket_category[ticket][2] -= 20
-                            sold_ticket_category[ticket][1].remove(seat)
-                        elif target == 'T':
-                            sold_ticket_category[ticket][2] -= 250
-                            sold_ticket_category[ticket][1].remove(seat)
-
-                        categories_seats[category][row_number][column] = 'X'
-
-                        results.append(f"Success: The seat {seat} at '{category}' has been canceled and now ready to sell again")
-                    elif sold_ticket_category[ticket][0] == category and seat not in sold_ticket_category[ticket][1]:
-                        results.append(f"Error: The seat {seat} at '{category}' has already been free! Nothing to cancel")
-                        # burayı fonksiyona çevir
-
+                if seat != 'X':
+                    categories_seats[category][row_number][column] = 'X'
+                    results.append(f"Success: The seat {seat} at '{category}' has been canceled and now ready to sell again")
+                elif seat == 'X':
+                    results.append(f"Error: The seat {seat} at '{category}' has already been free! Nothing to cancel")
             elif row_number > max_row and column <= max_column:
-                return f"Error: The category '{category}' has less row than the specified index {seat}!"
+                results.append(f"Error: The category '{category}' has less row than the specified index {seat}!")
             elif row_number <= max_row and column > max_column:
-                return f"Error: The category '{category}' has less column than the specified index {seat}!"
+                results.append(f"Error: The category '{category}' has less column than the specified index {seat}!")
             elif row_number > max_row and column > max_column:
-                return f"Error: The category '{category}' has less row and column than the specified index {seat}!"
+                results.append(f"Error: The category '{category}' has less row and column than the specified index {seat}!")
 
 
-for command in file_inputs:
-    if command.startswith('CREATECATEGORY'):
-        argument = command.split(' ', 1)
-        create_category(argument[1])
-    elif command.startswith('SELLTICKET'):
-        argument = command.split(' ', 1)
-        sell_ticket(argument[1])
-    elif command.startswith('CANCELTICKET'):
-        argument = command.split(' ', 1)
-        cancel_ticket(argument[1])
+def balance(arg):
+    category = arg
+
+    student = 0
+    full = 0
+    seasonal = 0
+
+    if category in categories_seats:
+        for row in categories_seats[category]:
+            student += row.count('S')
+            full += row.count('F')
+            seasonal += row.count('T')
+
+        revenue = (student * 10) + (full * 20) + (seasonal * 250)
+
+        title = f"Category report of '{category}'"
+        header = title + '\n' + ('-' * len(title))
+        content = header + '\n' f"Sum of students = {student}, Sum of full pay = {full}," \
+                          f" Sum of season ticket= {seasonal}, and Revenues = {revenue} Dollars"
+        results.append(content)
+    else:
+        results.append(f"Warning: Category {category} is not available!")
 
 
+def show_category(arg):
+    category_name = arg
+    category = categories_seats[category_name]
+
+    if category_name in categories_seats:
+        table = []
+        column_line = ''
+
+        column_range = list(range(categories_r_c[category_name][1]))
+        for column in column_range:
+            if column == column_range[0]:
+                column_line += f" {column: ^3}"
+            else:
+                column_line += f"{column: ^3}"
+
+        column_line.rstrip()
+        table.append(column_line)
+
+        line_letter = 0
+        for row in category:
+            table_line = f"{index_alphabet[line_letter]} "
+
+            for column in row:
+                table_line += f"{column: <3}"
+
+            table.append(table_line.rstrip())
+            line_letter += 1
+
+        table.append(f"Printing category layout of {category_name}")
+        table.reverse()
+        for line in table:
+            results.append(line)
+    else:
+        results.append(f"Warning: Category {category} is not available!")
+
+
+def command_organizer():
+    for command in file_inputs:
+        if command.startswith('CREATECATEGORY'):
+            argument = command.split(' ', 1)
+            create_category(argument[1])
+        elif command.startswith('SELLTICKET'):
+            argument = command.split(' ', 1)
+            sell_ticket(argument[1])
+        elif command.startswith('CANCELTICKET'):
+            argument = command.split(' ', 1)
+            cancel_ticket(argument[1])
+        elif command.startswith('BALANCE'):
+            argument = command.split(' ', 1)
+            balance(argument[1])
+        elif command.startswith('SHOWCATEGORY'):
+            argument = command.split(' ', 1)
+            show_category(argument[1])
+
+
+command_organizer()
 write_results()
